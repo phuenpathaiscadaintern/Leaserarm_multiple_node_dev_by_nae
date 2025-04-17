@@ -69,10 +69,10 @@ BLEShortCharacteristic debugLaserCharacteristic("1FB91B09-88A0-4AD3-9BB9-28A2E4E
 BLEShortCharacteristic debugMicCharacteristic("EA727F6D-1B2F-4613-BADF-DDF2C01659EC", BLERead | BLEWrite | BLENotify);
 
 // deviceStatus -1 = unknow error, 0 = ready, 1 = mic error, 2 = IMU error, 3 = stoarge error, 4 = BLE error
-BLEShortCharacteristic deviceStatusCharacteristic("D90A7C02-9B21-4243-8372-3E523FA7978B", BLERead);
+BLEShortCharacteristic deviceStatusCharacteristic("D90A7C02-9B21-4243-8372-3E523FA7978B", BLERead | BLENotify);
 
 // set id of device to send out of the shot
-BLEShortCharacteristic deviceIDCharacteristic("26B4FBEA-53D6-4D84-B5BC-21A211F0B317", BLERead | BLEWrite);
+BLEShortCharacteristic deviceIDCharacteristic("26B4FBEA-53D6-4D84-B5BC-21A211F0B317", BLERead | BLEWrite | BLENotify);
 
 // enable/disable the laser; 1 = enable, 0 = disable
 BLEShortCharacteristic enableLaserCharacteristic("B45BDB1D-2C6A-4417-B97C-F10C217E2045", BLERead | BLEWrite);
