@@ -918,10 +918,8 @@ void BLESetLocalName()
 
 int DoBLE()
 {
-  // listen for Bluetooth® Low Energy peripherals to connect:
   central = BLE.central();
 
-  // if a central is connected to peripheral:
   if (central)
   {
     Serial.println("central detected");
@@ -932,85 +930,66 @@ int DoBLE()
       Serial.println(central.address());
       connected = true;
       connectedToMaster = true;
-
-      if (central.connected()) {
-        BLE.poll();
-
-        byte startFlag = 0;
-        startCharacteristic.readValue(&startFlag, sizeof(startFlag));
-        if (startFlag == 1 && !started) {
-          Serial.println("🚦 START received. Begin sensing...");
-          started = true;
-        }
-      }
     }
 
     if (central.connected()) {
-      // ✅ เพิ่มการเช็คค่า SOUND_THRESHOLD ที่เขียนมาจาก Master
+      BLE.poll();  // ✅ ต้องมาก่อนทุก .written()
+
+      // รับค่า threshold ใหม่
       if (soundThresholdCharacteristic.written()) {
         soundThreshold = soundThresholdCharacteristic.value();
         Serial.print("🎚️ Received new threshold from master: ");
         Serial.println(soundThreshold);
       }
 
+      // START signal
+      byte startFlag = 0;
+      startCharacteristic.readValue(&startFlag, sizeof(startFlag));
+      if (startFlag == 1 && !started) {
+        Serial.println("🚦 START received. Begin sensing...");
+        started = true;
+      }
+
+      // เช็กค่าว่า master เขียนค่ามา
       if (debugLaserCharacteristic.written()) {
-        if (debugLaserCharacteristic.value()) {
-          Serial.println("Laser on");
-          debugLaser = true;
-          LEDLaser(debugLaser);
-        } else {
-          Serial.println("Laser off");
-          debugLaser = false;
-          LEDLaser(debugLaser);
-        }
+        debugLaser = debugLaserCharacteristic.value();
+        Serial.println(debugLaser ? "Laser on" : "Laser off");
+        LEDLaser(debugLaser);
       }
 
-      if (debugMicCharacteristic.written()) {
-        if (debugMicCharacteristic.value() == 1) {
-          Serial.println("Mic debug on");
-          debugMic = true;
-        } else {
-          Serial.println("Mic debug off");
-          debugMic = false;
-        }
+      if(debugMicCharacteristic.written()) {
+        debugMic = debugMicCharacteristic.value() == 1;
+        Serial.println(debugMic ? "Mic debug on" : "Mic debug off");
       }
 
-      if (deviceIDCharacteristic.written()) {
-        unsigned char value = deviceIDCharacteristic.value();
-        persistanceData.id = value;
+      if(deviceIDCharacteristic.written()) {
+        persistanceData.id = deviceIDCharacteristic.value();
         settingsChanged = true;
         Serial.print("Device ID changed to ");
-        Serial.println(value);
+        Serial.println(persistanceData.id);
         BLESetLocalName();
       }
 
       if (enableLaserCharacteristic.written()) {
-        if (enableLaserCharacteristic.value()) {
-          Serial.println("Laser enabled");
-          enableLaser = true;
-        } else {
-          Serial.println("Laser disabled");
-          enableLaser = false;
-        }
+        enableLaser = enableLaserCharacteristic.value();
+        Serial.println(enableLaser ? "Laser enabled" : "Laser disabled");
       }
 
-      if (micLevelDetectCharacteristic.written()) {
-        uint16_t value = micLevelDetectCharacteristic.value();
-        persistanceData.difftarget = value;
+      if(micLevelDetectCharacteristic.written()) {
+        persistanceData.difftarget = micLevelDetectCharacteristic.value();
         settingsChanged = true;
         Serial.print("Detect level changed to ");
-        Serial.println(value);
+        Serial.println(persistanceData.difftarget);
       }
 
-      if (latchLaserCharacteristic.written()) {
-        uint16_t value = latchLaserCharacteristic.value();
-        persistanceData.latchshow = value;
+      if(latchLaserCharacteristic.written()) {
+        persistanceData.latchshow = latchLaserCharacteristic.value();
         settingsChanged = true;
         Serial.print("Laser Latch value changed to ");
-        Serial.println(value);
+        Serial.println(persistanceData.latchshow);
       }
 
-      if (counterAccCharacteristic.written()) {
+      if(counterAccCharacteristic.written()) {
         persistanceData.counter_acc = 0;
         settingsChanged = true;
         Serial.println("Reset acc counter");
@@ -1046,7 +1025,6 @@ int DoBLE()
 
   return 0;
 }
-
 
 void onSoundThresholdWritten(BLEDevice central, BLECharacteristic characteristic) {
   int value = 0;
