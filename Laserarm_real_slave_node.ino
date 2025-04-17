@@ -922,10 +922,9 @@ int DoBLE()
 
   if (central)
   {
-    Serial.println("central detected");
-
     if (!connected) 
     {
+      Serial.println("central detected");
       Serial.print("Connected to central: ");
       Serial.println(central.address());
       connected = true;
