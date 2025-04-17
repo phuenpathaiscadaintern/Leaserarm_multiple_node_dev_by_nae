@@ -181,6 +181,9 @@ bool enableLaser = true;          // shall en/dis from software
 
 bool laserison = false;  // internall work for latching the laser
 
+int soundThreshold = 0;            // ค่า Threshold ที่ได้จาก Master
+bool startSignalReceived = false; // Flag ว่าเริ่มทำงานหรือยัง
+
 // to save in eeprom
 typedef struct tagPersistanceData 
 {
