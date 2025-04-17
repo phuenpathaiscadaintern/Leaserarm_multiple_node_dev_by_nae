@@ -104,7 +104,7 @@ BLEByteCharacteristic profileCharacteristic("D46AAB9F-0082-4398-969A-17645952A9B
 // battery status, -1 = unknow, 0 = low, 1 = fully charge or not charged
 BLECharCharacteristic batteryCharacteristic("DA313D4A-BCAD-4F4E-99A1-1004A5412461", BLERead | BLENotify);
 
-BLECharacteristic soundThresholdCharacteristic(SOUND_THRESHOLD_UUID, BLERead | BLEWrite, sizeof(int));
+BLEShortCharacteristic soundThresholdCharacteristic("5C3C8B61-82A9-4B92-835F-73927E9D9D5E", BLERead | BLEWrite);
 BLECharacteristic startCharacteristic(START_CHARACTERISTIC_UUID, BLERead | BLEWrite, 1);
 
 
@@ -929,13 +929,9 @@ int DoBLE()
     if (!connected) 
     {
       Serial.print("Connected to central: ");
-      // print the central's MAC address:
       Serial.println(central.address());
       connected = true;
       connectedToMaster = true;
-
-      // ✅ ลบส่วนนี้ออกเพราะมันซ้ำซ้อนและทำให้เข้าเงื่อนไขผิด
-      // static BLEDevice central = BLE.central();
 
       if (central.connected()) {
         BLE.poll();
@@ -946,28 +942,30 @@ int DoBLE()
           Serial.println("🚦 START received. Begin sensing...");
           started = true;
         }
-
-        // ตรวจสอบการเขียนอื่น ๆ ที่ Master ส่งมา (ตามโค้ดเดิม)
       }
     }
 
-    // while the central is still connected to peripheral:
     if (central.connected()) {
-      // if the remote device wrote to the characteristic,
-      // use the value to control the LED:
+      // ✅ เพิ่มการเช็คค่า SOUND_THRESHOLD ที่เขียนมาจาก Master
+      if (soundThresholdCharacteristic.written()) {
+        soundThreshold = soundThresholdCharacteristic.value();
+        Serial.print("🎚️ Received new threshold from master: ");
+        Serial.println(soundThreshold);
+      }
+
       if (debugLaserCharacteristic.written()) {
-        if (debugLaserCharacteristic.value()) {   // any value other than 0
+        if (debugLaserCharacteristic.value()) {
           Serial.println("Laser on");
           debugLaser = true;
           LEDLaser(debugLaser);
-        } else {                              // a 0 value
+        } else {
           Serial.println("Laser off");
           debugLaser = false;
           LEDLaser(debugLaser);
         }
       }
 
-      if(debugMicCharacteristic.written()) {
+      if (debugMicCharacteristic.written()) {
         if (debugMicCharacteristic.value() == 1) {
           Serial.println("Mic debug on");
           debugMic = true;
@@ -977,7 +975,7 @@ int DoBLE()
         }
       }
 
-      if(deviceIDCharacteristic.written()) {
+      if (deviceIDCharacteristic.written()) {
         unsigned char value = deviceIDCharacteristic.value();
         persistanceData.id = value;
         settingsChanged = true;
@@ -996,7 +994,7 @@ int DoBLE()
         }
       }
 
-      if(micLevelDetectCharacteristic.written()) {
+      if (micLevelDetectCharacteristic.written()) {
         uint16_t value = micLevelDetectCharacteristic.value();
         persistanceData.difftarget = value;
         settingsChanged = true;
@@ -1004,7 +1002,7 @@ int DoBLE()
         Serial.println(value);
       }
 
-      if(latchLaserCharacteristic.written()) {
+      if (latchLaserCharacteristic.written()) {
         uint16_t value = latchLaserCharacteristic.value();
         persistanceData.latchshow = value;
         settingsChanged = true;
@@ -1012,7 +1010,7 @@ int DoBLE()
         Serial.println(value);
       }
 
-      if(counterAccCharacteristic.written()) {
+      if (counterAccCharacteristic.written()) {
         persistanceData.counter_acc = 0;
         settingsChanged = true;
         Serial.println("Reset acc counter");
@@ -1034,7 +1032,6 @@ int DoBLE()
     }
     else
     {
-      // when the central disconnects, print it out:
       Serial.print(F("Disconnected from central: "));
       Serial.println(central.address());
       connected = false;
@@ -1042,7 +1039,6 @@ int DoBLE()
       connectedToMaster = false;
       thresholdSet = false;
 
-      // ✅ สำคัญ: ให้เริ่มโฆษณาใหม่หลังจาก disconnect
       Serial.println("📣 Restart advertising...");
       BLE.advertise();
     }
@@ -1050,6 +1046,7 @@ int DoBLE()
 
   return 0;
 }
+
 
 void onSoundThresholdWritten(BLEDevice central, BLECharacteristic characteristic) {
   int value = 0;
