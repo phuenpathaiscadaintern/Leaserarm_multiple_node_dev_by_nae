@@ -40,6 +40,10 @@
 
 #define SOUND_THRESHOLD_UUID      "D4E5F678-9012-3456-789A-BCDEF0123456"
 #define START_CHARACTERISTIC_UUID "E5F6A1B2-C3D4-5678-9012-3456789ABCDE"
+
+int soundThreshold = 0;            // ค่า Threshold ที่ได้จาก Master
+bool startSignalReceived = false; // Flag ว่าเริ่มทำงานหรือยัง
+
 typedef enum State 
 {
   Error = -1,
@@ -59,9 +63,6 @@ BLEService tslaserService("87E01439-99BE-45AA-9410-DB4D3F23EA99"); // Bluetooth�
 //2. add in setup() 
 //3. add in handle DoBLE() if writable
 //4. add .setValue if notify
-
-int soundThreshold = 0;            // ค่า Threshold ที่ได้จาก Master
-bool startSignalReceived = false; // Flag ว่าเริ่มทำงานหรือยัง
 
 // Bluetooth® Low Energy Laser Characteristic - custom 128-bit UUID, read/writable/notify by central
 // on/off laser for testing/borsight 1 = laser alway on, 0 = laser off
