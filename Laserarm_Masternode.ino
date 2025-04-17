@@ -1,8 +1,8 @@
 #include <ArduinoBLE.h>
 
-// UUIDs ตามฝั่ง Slave
+// UUIDs จากฝั่ง Slave
 #define SERVICE_UUID              "87E01439-99BE-45AA-9410-DB4D3F23EA99"
-#define SOUND_THRESHOLD_UUID      "2C4959B0-010A-4F00-B229-F36AD1500CE8"
+#define SOUND_THRESHOLD_UUID      "5C3C8B61-82A9-4B92-835F-73927E9D9D5E"
 #define START_CHARACTERISTIC_UUID "E5F6A1B2-C3D4-5678-9012-3456789ABCDE"
 #define SOUND_LEVEL_UUID          "EA727F6D-1B2F-4613-BADF-DDF2C01659EC"
 #define COUNTER_ALL_UUID          "134D9AED-7952-42D0-B8FC-96E59AADA8AD"
@@ -35,6 +35,82 @@ bool isSlaveNode(String name) {
   return name.startsWith("ArLaserTS") || name.indexOf("ArLaserTS") >= 0;
 }
 
+void handleNotification(BLEDevice central, BLECharacteristic characteristic) {
+  Serial.print("🔔 Notification from ");
+  Serial.println(central.localName());
+
+  if (characteristic.uuid() == SOUND_LEVEL_UUID) {
+    int16_t soundLevel;
+    characteristic.readValue((byte*)&soundLevel, sizeof(soundLevel));
+    Serial.print("🔊 Sound Level: ");
+    Serial.println(soundLevel);
+  } else if (characteristic.uuid() == COUNTER_ALL_UUID) {
+    uint32_t counter;
+    characteristic.readValue((byte*)&counter, sizeof(counter));
+    Serial.print("🔢 Counter All: ");
+    Serial.println(counter);
+  } else if (characteristic.uuid() == COUNTER_ACC_UUID) {
+    uint32_t counter;
+    characteristic.readValue((byte*)&counter, sizeof(counter));
+    Serial.print("🔄 Counter Acc: ");
+    Serial.println(counter);
+  } else if (characteristic.uuid() == DEVICE_ID_UUID) {
+    byte id;
+    characteristic.readValue(&id, 1);
+    Serial.print("🆔 Device ID: ");
+    Serial.println(id);
+  } else if (characteristic.uuid() == BATTERY_UUID) {
+    byte battery;
+    characteristic.readValue(&battery, 1);
+    Serial.print("🔋 Battery: ");
+    Serial.println(battery == 0 ? "Charging" : battery == 1 ? "Full" : "Unknown");
+  } else if (characteristic.uuid() == DEVICE_STATUS_UUID) {
+    int16_t status;
+    characteristic.readValue((byte*)&status, sizeof(status));
+    Serial.print("📶 Status: ");
+    switch (status) {
+      case 0: Serial.println("🎯 Aiming"); break;
+      case 1: Serial.println("😴 Standby"); break;
+      case 2: Serial.println("🕰️ Idle"); break;
+      case 3: Serial.println("💤 Sleep"); break;
+      case -1: Serial.println("❗ Error"); break;
+      default: Serial.println("❓ Unknown");
+    }
+  }
+}
+
+void subscribeCharacteristics(SlaveNode &slave) {
+  slave.soundLevelChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.soundLevelChar.subscribe()) {
+    Serial.println("Subscribed to soundLevelChar");
+  }
+
+  slave.counterAllChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.counterAllChar.subscribe()) {
+    Serial.println("Subscribed to counterAllChar");
+  }
+
+  slave.counterAccChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.counterAccChar.subscribe()) {
+    Serial.println("Subscribed to counterAccChar");
+  }
+
+  slave.deviceIdChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.deviceIdChar.subscribe()) {
+    Serial.println("Subscribed to deviceIdChar");
+  }
+
+  slave.batteryChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.batteryChar.subscribe()) {
+    Serial.println("Subscribed to batteryChar");
+  }
+
+  slave.statusChar.setEventHandler(BLEUpdated, handleNotification);
+  if (slave.statusChar.subscribe()) {
+    Serial.println("Subscribed to statusChar");
+  }
+}
+
 void scanAndConnectSlaves() {
   BLE.scan();
   Serial.println("🔍 Scanning for slave-like devices...");
@@ -49,7 +125,7 @@ void scanAndConnectSlaves() {
 
       if (isSlaveNode(devName)) {
         BLE.stopScan();
-        delay(300); // ⏱️ ให้เวลาฝั่ง Slave เตรียมตัวก่อน connect
+        delay(300);
 
         Serial.println("🔗 Connecting to: " + devName);
         if (dev.connect()) {
@@ -87,7 +163,9 @@ void scanAndConnectSlaves() {
               devName, dev, startChar, thresholdChar, soundLevelChar,
               counterAllChar, counterAccChar, deviceIdChar, batteryChar, statusChar
             };
-            Serial.println("✅ Added slave: " + devName);
+
+            subscribeCharacteristics(connectedSlaves[numSlaves - 1]);
+            Serial.println("✅ Subscribed & Added slave: " + devName);
           } else {
             Serial.println("❌ Missing characteristics. Disconnecting.");
             dev.disconnect();
@@ -115,55 +193,6 @@ void sendStartSignal() {
   started = true;
 }
 
-void pollSlaves() {
-  for (int i = 0; i < numSlaves; i++) {
-    SlaveNode& slave = connectedSlaves[i];
-
-    if (!slave.device.connected()) {
-      Serial.println("🔌 Disconnected: " + slave.name);
-      continue;
-    }
-
-    int16_t soundLevel = 0;
-    uint32_t counterAll = 0, counterAcc = 0;
-    byte deviceId = 0, battery = 255;
-    int16_t status = -1;
-
-    bool ok1 = slave.soundLevelChar.readValue((byte*)&soundLevel, sizeof(soundLevel));
-    bool ok2 = slave.counterAllChar.readValue((byte*)&counterAll, sizeof(counterAll));
-    bool ok3 = slave.counterAccChar.readValue((byte*)&counterAcc, sizeof(counterAcc));
-    bool ok4 = slave.deviceIdChar.readValue(&deviceId, 1);
-    bool ok5 = slave.batteryChar.readValue(&battery, 1);
-    bool ok6 = slave.statusChar.readValue((byte*)&status, sizeof(status));
-
-    if (!(ok1 && ok2 && ok3 && ok4 && ok5 && ok6)) {
-      Serial.println("⚠️ Failed to read some characteristics from " + slave.name);
-      continue;
-    }
-
-    String statusStr = "❓ Unknown";
-    switch (status) {
-      case 0: statusStr = "🎯 Aiming"; break;
-      case 1: statusStr = "😴 Standby"; break;
-      case 2: statusStr = "🕰️ Idle"; break;
-      case 3: statusStr = "💤 Sleep"; break;
-      case -1: statusStr = "❗ Error"; break;
-    }
-
-    Serial.print("\n📡 ["); Serial.print(slave.name); Serial.println("]");
-    Serial.print("   🔊 Sound Level : "); Serial.println(soundLevel);
-    Serial.print("   🔢 Counter All : "); Serial.println(counterAll);
-    Serial.print("   🔄 Counter Acc : "); Serial.println(counterAcc);
-    Serial.print("   🆔 Device ID   : "); Serial.println(deviceId);
-    Serial.print("   🔋 Battery     : ");
-    if (battery == 0) Serial.println("🔌 Charging");
-    else if (battery == 1) Serial.println("✅ Full / Not Charging");
-    else Serial.println("❓ Unknown");
-    Serial.print("   📶 Status      : "); Serial.println(statusStr);
-    Serial.println("-------------------------------");
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   if (!BLE.begin()) {
@@ -171,7 +200,7 @@ void setup() {
     while (1);
   }
 
-  delay(3000); // ให้ Slave เริ่มโฆษณาทัน
+  delay(3000);
   scanAndConnectSlaves();
 
   Serial.println("\n📨 พิมพ์แบบนี้เพื่อเซ็ต threshold:");
@@ -179,6 +208,8 @@ void setup() {
 }
 
 void loop() {
+  BLE.poll(); // สำคัญสำหรับ Notification
+
   if (Serial.available()) {
     String input = Serial.readStringUntil('\n');
     input.trim();
@@ -211,9 +242,5 @@ void loop() {
     }
   }
 
-  if (started) {
-    pollSlaves();
-  }
-
-  delay(500);
+  delay(10); // ลด load ของ loop
 }
