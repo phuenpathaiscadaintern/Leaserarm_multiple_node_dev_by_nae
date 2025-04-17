@@ -104,6 +104,7 @@ BLECharCharacteristic batteryCharacteristic("DA313D4A-BCAD-4F4E-99A1-1004A541246
 BLECharacteristic soundThresholdCharacteristic(SOUND_THRESHOLD_UUID, BLERead | BLEWrite, sizeof(int));
 BLECharacteristic startCharacteristic(START_CHARACTERISTIC_UUID, BLERead | BLEWrite, 1);
 
+
 //Mic
 // Settings
 #if defined(WIO_TERMINAL)
@@ -288,9 +289,8 @@ void setup() {
     tslaserService.addCharacteristic(startCharacteristic);
 
     // เพิ่ม characteristics เข้า service
-    tslaserService.addCharacteristic(thresholdChar);
-    tslaserService.addCharacteristic(startChar);
-
+    tslaserService.addCharacteristic(soundThresholdCharacteristic);
+    tslaserService.addCharacteristic(startCharacteristic);
     // Add service to BLE stack
     BLE.addService(tslaserService);
 
