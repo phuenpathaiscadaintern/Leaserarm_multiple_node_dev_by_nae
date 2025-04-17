@@ -1052,7 +1052,7 @@ int DoBLE()
 }
 
 void onSoundThresholdWritten(BLEDevice central, BLECharacteristic characteristic) {
-  SOUND_THRESHOLD_CHARACTERISTIC.writeValue((byte)soundThreshold);
+  soundThresholdCharacteristic.writeValue((byte)soundThreshold);
   Serial.print("📥 Received SOUND_THRESHOLD: ");
   Serial.println(soundThreshold);
 }
