@@ -294,6 +294,9 @@ void setup() {
     // Add service to BLE stack
     BLE.addService(tslaserService);
 
+    soundThresholdCharacteristic.setEventHandler(BLEWritten, onSoundThresholdWritten);
+    startCharacteristic.setEventHandler(BLEWritten, onStartWritten);
+
     // Optional: Add write handler
     soundThresholdCharacteristic.setEventHandler(BLEWritten, onThresholdWrite);
 
@@ -1043,4 +1046,15 @@ int DoBLE()
   }
 
   return 0;
+}
+
+void onSoundThresholdWritten(BLEDevice central, BLECharacteristic characteristic) {
+  soundThreshold = characteristic.value(); // หรือแปลงค่าตามที่ต้องใช้
+  Serial.print("📥 Received SOUND_THRESHOLD: ");
+  Serial.println(soundThreshold);
+}
+
+void onStartWritten(BLEDevice central, BLECharacteristic characteristic) {
+  startSignalReceived = true;
+  Serial.println("🚦 START signal received!");
 }
