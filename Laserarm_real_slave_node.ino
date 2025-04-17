@@ -267,8 +267,8 @@ void setup() {
     deviceStatus = 4;
   } else {
     // Optional: Set names for BLE visibility
-    BLE.setLocalName("XIAO_LaserSlave");
-    BLE.setDeviceName("XIAO_LaserSlave");
+    BLE.setLocalName("ArLaserTS001");  // ชื่อต้องตรงกับที่ Master ใช้เช็ค
+    BLE.setAdvertisedService(tslaserService);
 
     // Add characteristics to service
     tslaserService.addCharacteristic(debugLaserCharacteristic);
@@ -286,6 +286,10 @@ void setup() {
     tslaserService.addCharacteristic(batteryCharacteristic);
     tslaserService.addCharacteristic(soundThresholdCharacteristic);
     tslaserService.addCharacteristic(startCharacteristic);
+
+    // เพิ่ม characteristics เข้า service
+    tslaserService.addCharacteristic(thresholdChar);
+    tslaserService.addCharacteristic(startChar);
 
     // Add service to BLE stack
     BLE.addService(tslaserService);
@@ -915,6 +919,7 @@ int DoBLE()
   if (central)
   {
     Serial.println("central detected");
+
     if (!connected) 
     {
       Serial.print("Connected to central: ");
@@ -923,15 +928,10 @@ int DoBLE()
       connected = true;
       connectedToMaster = true;
 
-      static BLEDevice central = BLE.central();
+      // ✅ ลบส่วนนี้ออกเพราะมันซ้ำซ้อนและทำให้เข้าเงื่อนไขผิด
+      // static BLEDevice central = BLE.central();
 
-      if (central && !connected) {
-        Serial.print("🔗 Connected to: ");
-        Serial.println(central.address());
-        connected = true;
-      }
-
-      if (central && central.connected()) {
+      if (central.connected()) {
         BLE.poll();
 
         byte startFlag = 0;
@@ -943,13 +943,6 @@ int DoBLE()
 
         // ตรวจสอบการเขียนอื่น ๆ ที่ Master ส่งมา (ตามโค้ดเดิม)
       }
-      else if (connected) {
-        Serial.println("❌ Disconnected.");
-        connected = false;
-        started = false;
-        thresholdSet = false;
-      }
- 
     }
 
     // while the central is still connected to peripheral:
@@ -967,15 +960,17 @@ int DoBLE()
           LEDLaser(debugLaser);
         }
       }
+
       if(debugMicCharacteristic.written()) {
-        if (debugMicCharacteristic.value() == 1) {   // exactly 1
+        if (debugMicCharacteristic.value() == 1) {
           Serial.println("Mic debug on");
           debugMic = true;
-        } else {                              // a 0 value
+        } else {
           Serial.println("Mic debug off");
           debugMic = false;
         }
       }
+
       if(deviceIDCharacteristic.written()) {
         unsigned char value = deviceIDCharacteristic.value();
         persistanceData.id = value;
@@ -986,10 +981,10 @@ int DoBLE()
       }
 
       if (enableLaserCharacteristic.written()) {
-        if (enableLaserCharacteristic.value()) {   // any value other than 0
+        if (enableLaserCharacteristic.value()) {
           Serial.println("Laser enabled");
           enableLaser = true;
-        } else {                              // a 0 value
+        } else {
           Serial.println("Laser disabled");
           enableLaser = false;
         }
@@ -1002,6 +997,7 @@ int DoBLE()
         Serial.print("Detect level changed to ");
         Serial.println(value);
       }
+
       if(latchLaserCharacteristic.written()) {
         uint16_t value = latchLaserCharacteristic.value();
         persistanceData.latchshow = value;
@@ -1009,11 +1005,13 @@ int DoBLE()
         Serial.print("Laser Latch value changed to ");
         Serial.println(value);
       }
+
       if(counterAccCharacteristic.written()) {
         persistanceData.counter_acc = 0;
         settingsChanged = true;
         Serial.println("Reset acc counter");
       }
+
       if (profileCharacteristic.written()) {
         int16_t value = profileCharacteristic.value();
         SetDefaultPersistanceData(value, &persistanceData);
@@ -1023,7 +1021,7 @@ int DoBLE()
         profileCharacteristic.writeValue(persistanceData.profileID);
 
         settingsChanged = true;
-        
+
         Serial.print("Profile cmd is ");
         Serial.println(value);  
       }
@@ -1037,6 +1035,12 @@ int DoBLE()
       started = false;
       connectedToMaster = false;
       thresholdSet = false;
+
+      // ✅ สำคัญ: ให้เริ่มโฆษณาใหม่หลังจาก disconnect
+      Serial.println("📣 Restart advertising...");
+      BLE.advertise();
     }
   }
+
+  return 0;
 }
