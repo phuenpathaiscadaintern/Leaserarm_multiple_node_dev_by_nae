@@ -916,12 +916,15 @@ void BLESetLocalName()
     Serial.println(szLocalName);
 }
 
+
 int DoBLE()
 {
   central = BLE.central();
 
-  if (central)
+  // ถ้ามีอุปกรณ์เชื่อมต่อ และเชื่อมต่อสำเร็จ
+  if (central && central.connected())
   {
+    // ตรวจว่าเชื่อมต่อครั้งแรกหรือยัง
     if (!connected) 
     {
       Serial.println("central detected");
@@ -931,99 +934,98 @@ int DoBLE()
       connectedToMaster = true;
     }
 
-    if (central.connected()) {
-      BLE.poll();  // ✅ ต้องมาก่อนทุก .written()
+    BLE.poll();  // ✅ ต้องมาก่อนทุก .written()
 
-      // รับค่า threshold ใหม่
-      if (soundThresholdCharacteristic.written()) {
-        soundThreshold = soundThresholdCharacteristic.value();
-        Serial.print("🎚️ Received new threshold from master: ");
-        Serial.println(soundThreshold);
-      }
+    // ---- ส่วนเช็ค characteristic ต่าง ๆ ตามที่เคย ----
 
-      // START signal
-      byte startFlag = 0;
-      startCharacteristic.readValue(&startFlag, sizeof(startFlag));
-      if (startFlag == 1 && !started) {
-        Serial.println("🚦 START received. Begin sensing...");
-        started = true;
-      }
-
-      // เช็กค่าว่า master เขียนค่ามา
-      if (debugLaserCharacteristic.written()) {
-        debugLaser = debugLaserCharacteristic.value();
-        Serial.println(debugLaser ? "Laser on" : "Laser off");
-        LEDLaser(debugLaser);
-      }
-
-      if(debugMicCharacteristic.written()) {
-        debugMic = debugMicCharacteristic.value() == 1;
-        Serial.println(debugMic ? "Mic debug on" : "Mic debug off");
-      }
-
-      if(deviceIDCharacteristic.written()) {
-        persistanceData.id = deviceIDCharacteristic.value();
-        settingsChanged = true;
-        Serial.print("Device ID changed to ");
-        Serial.println(persistanceData.id);
-        BLESetLocalName();
-      }
-
-      if (enableLaserCharacteristic.written()) {
-        enableLaser = enableLaserCharacteristic.value();
-        Serial.println(enableLaser ? "Laser enabled" : "Laser disabled");
-      }
-
-      if(micLevelDetectCharacteristic.written()) {
-        persistanceData.difftarget = micLevelDetectCharacteristic.value();
-        settingsChanged = true;
-        Serial.print("Detect level changed to ");
-        Serial.println(persistanceData.difftarget);
-      }
-
-      if(latchLaserCharacteristic.written()) {
-        persistanceData.latchshow = latchLaserCharacteristic.value();
-        settingsChanged = true;
-        Serial.print("Laser Latch value changed to ");
-        Serial.println(persistanceData.latchshow);
-      }
-
-      if(counterAccCharacteristic.written()) {
-        persistanceData.counter_acc = 0;
-        settingsChanged = true;
-        Serial.println("Reset acc counter");
-      }
-
-      if (profileCharacteristic.written()) {
-        int16_t value = profileCharacteristic.value();
-        SetDefaultPersistanceData(value, &persistanceData);
-
-        micLevelDetectCharacteristic.writeValue(persistanceData.difftarget);
-        latchLaserCharacteristic.writeValue(persistanceData.latchshow);
-        profileCharacteristic.writeValue(persistanceData.profileID);
-
-        settingsChanged = true;
-
-        Serial.print("Profile cmd is ");
-        Serial.println(value);  
-      }
+    if (soundThresholdCharacteristic.written()) {
+      soundThreshold = soundThresholdCharacteristic.value();
+      Serial.print("🎚️ Received new threshold from master: ");
+      Serial.println(soundThreshold);
     }
-    else
-    {
-      Serial.print(F("Disconnected from central: "));
-      Serial.println(central.address());
-      connected = false;
-      started = false;
-      connectedToMaster = false;
-      thresholdSet = false;
 
-      Serial.println("📣 Restart advertising...");
-      BLE.advertise();
+    byte startFlag = 0;
+    startCharacteristic.readValue(&startFlag, sizeof(startFlag));
+    if (startFlag == 1 && !started) {
+      Serial.println("🚦 START received. Begin sensing...");
+      started = true;
     }
+
+    if (debugLaserCharacteristic.written()) {
+      debugLaser = debugLaserCharacteristic.value();
+      Serial.println(debugLaser ? "Laser on" : "Laser off");
+      LEDLaser(debugLaser);
+    }
+
+    if(debugMicCharacteristic.written()) {
+      debugMic = debugMicCharacteristic.value() == 1;
+      Serial.println(debugMic ? "Mic debug on" : "Mic debug off");
+    }
+
+    if(deviceIDCharacteristic.written()) {
+      persistanceData.id = deviceIDCharacteristic.value();
+      settingsChanged = true;
+      Serial.print("Device ID changed to ");
+      Serial.println(persistanceData.id);
+      BLESetLocalName();
+    }
+
+    if (enableLaserCharacteristic.written()) {
+      enableLaser = enableLaserCharacteristic.value();
+      Serial.println(enableLaser ? "Laser enabled" : "Laser disabled");
+    }
+
+    if(micLevelDetectCharacteristic.written()) {
+      persistanceData.difftarget = micLevelDetectCharacteristic.value();
+      settingsChanged = true;
+      Serial.print("Detect level changed to ");
+      Serial.println(persistanceData.difftarget);
+    }
+
+    if(latchLaserCharacteristic.written()) {
+      persistanceData.latchshow = latchLaserCharacteristic.value();
+      settingsChanged = true;
+      Serial.print("Laser Latch value changed to ");
+      Serial.println(persistanceData.latchshow);
+    }
+
+    if(counterAccCharacteristic.written()) {
+      persistanceData.counter_acc = 0;
+      settingsChanged = true;
+      Serial.println("Reset acc counter");
+    }
+
+    if (profileCharacteristic.written()) {
+      int16_t value = profileCharacteristic.value();
+      SetDefaultPersistanceData(value, &persistanceData);
+
+      micLevelDetectCharacteristic.writeValue(persistanceData.difftarget);
+      latchLaserCharacteristic.writeValue(persistanceData.latchshow);
+      profileCharacteristic.writeValue(persistanceData.profileID);
+
+      settingsChanged = true;
+
+      Serial.print("Profile cmd is ");
+      Serial.println(value);  
+    }
+  }
+  else if (connected)
+  {
+    // เช็กว่าเคยเชื่อมต่อ แล้วตอนนี้หลุดแล้ว
+    Serial.print(F("Disconnected from central: "));
+    Serial.println(central.address());
+    connected = false;
+    started = false;
+    connectedToMaster = false;
+    thresholdSet = false;
+
+    Serial.println("📣 Restart advertising...");
+    BLE.advertise();
   }
 
   return 0;
 }
+
 
 void onSoundThresholdWritten(BLEDevice central, BLECharacteristic characteristic) {
   int value = 0;
