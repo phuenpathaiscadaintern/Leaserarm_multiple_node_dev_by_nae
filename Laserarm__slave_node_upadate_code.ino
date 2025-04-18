@@ -236,10 +236,13 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  // ✅ กำหนด ID ชั่วคราว (ทำให้ localName ไม่ซ้ำ)
-  persistanceData.id = 2;   // 👈 เปลี่ยนเป็นเลขเฉพาะของแต่ละเครื่อง
-
   InitLoadPersistanceData(&persistanceData);
+
+  if (persistanceData.id == 0) {
+  persistanceData.id = 2;  // 👈 เปลี่ยนให้ไม่ซ้ำ
+  SavePersistanceData(&persistanceData);  // ✅ Save เข้า flash
+  }
+
 
 #if defined(WIO_TERMINAL)  
   pinMode(WIO_KEY_A, INPUT_PULLUP);
