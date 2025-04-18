@@ -36,8 +36,19 @@ bool isSlaveNode(String name) {
 }
 
 void handleNotification(BLEDevice central, BLECharacteristic characteristic) {
+  String devName = central.localName();
+  if (devName.length() == 0) {
+    // หา devName จาก connectedSlaves
+    for (int i = 0; i < numSlaves; i++) {
+      if (connectedSlaves[i].device == central) {
+        devName = connectedSlaves[i].name;
+        break;
+      }
+    }
+  }
+
   Serial.print("🔔 Notification from ");
-  Serial.println(central.localName());
+  Serial.println(devName);
 
   if (characteristic.uuid() == SOUND_LEVEL_UUID) {
     int16_t soundLevel;
