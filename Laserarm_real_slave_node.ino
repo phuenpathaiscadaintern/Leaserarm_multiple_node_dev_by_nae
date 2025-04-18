@@ -366,6 +366,13 @@ void loop() {
 
   if (deviceStatus == 0 && started && thresholdSet) 
   {
+    static int16_t lastStatus = -2;
+
+    if (deviceStatus != lastStatus) {
+    deviceStatusCharacteristic.setValue(deviceStatus);  // ✅ แจ้ง Master
+    lastStatus = deviceStatus;
+    }
+    
     CheckIMU();
     
     if (onaims && !oninert) 
@@ -464,6 +471,8 @@ void loop() {
         allcounter++;
         startMillis = millis();
 
+        debugMicCharacteristic.setValue(diff);  // ✅ แจ้ง sound level กลับไปยัง master
+
         if (debugMic) 
         {
           debugMicCharacteristic.setValue(diff);
@@ -494,8 +503,9 @@ void loop() {
           persistanceData.counter_acc++;
           magazineCount++;
           onShootWithIDAndMagazineCharacteristic.setValue(ShootValue());
-          counterAllCharacteristic.setValue(persistanceData.counter_all);
-          counterAccCharacteristic.setValue(persistanceData.counter_acc);
+          
+         counterAllCharacteristic.setValue(persistanceData.counter_all);  // ✅ แจ้ง counter ทั้งหมด
+          counterAccCharacteristic.setValue(persistanceData.counter_acc);  // ✅ แจ้ง counter นับใหม่
         }
       }
 #endif
