@@ -343,6 +343,10 @@ void loop() {
   {
     stateStartMillis = millis();
     previousState = currentState;
+
+    deviceStatusCharacteristic.writeValue((int16_t)currentState);  // ✅ แจ้ง Master
+    Serial.print("🔄 Status changed: ");
+    Serial.println((int16_t)currentState);
   }
   unsigned long stateDiff = millis() - stateStartMillis;
 
