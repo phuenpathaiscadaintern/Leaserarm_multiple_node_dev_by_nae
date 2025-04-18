@@ -39,17 +39,10 @@ void handleNotification(BLEDevice central, BLECharacteristic characteristic) {
   String uuid = String(characteristic.uuid());
   uuid.toUpperCase();
 
-  // 🔍 หาชื่อของ Slave ที่เป็นเจ้าของ characteristic นี้
+  // ✅ หาชื่อ Slave จาก central ที่ส่ง Notification มา
   String slaveName = "Unknown";
   for (int i = 0; i < numSlaves; i++) {
-    if (
-      characteristic == connectedSlaves[i].soundLevelChar ||
-      characteristic == connectedSlaves[i].counterAllChar ||
-      characteristic == connectedSlaves[i].counterAccChar ||
-      characteristic == connectedSlaves[i].deviceIdChar ||
-      characteristic == connectedSlaves[i].batteryChar ||
-      characteristic == connectedSlaves[i].statusChar
-    ) {
+    if (central.address() == connectedSlaves[i].device.address()) {
       slaveName = connectedSlaves[i].name;
       break;
     }
@@ -58,37 +51,31 @@ void handleNotification(BLEDevice central, BLECharacteristic characteristic) {
   Serial.print("🔔 Notification from ");
   Serial.println(slaveName);
 
-  // ✅ แสดงข้อมูลตาม UUID
   if (uuid == SOUND_LEVEL_UUID) {
     int16_t soundLevel;
     characteristic.readValue((byte*)&soundLevel, sizeof(soundLevel));
     Serial.print("🔊 Sound Level: ");
     Serial.println(soundLevel);
-
   } else if (uuid == COUNTER_ALL_UUID) {
     uint32_t counter;
     characteristic.readValue((byte*)&counter, sizeof(counter));
     Serial.print("🔢 Counter All: ");
     Serial.println(counter);
-
   } else if (uuid == COUNTER_ACC_UUID) {
     uint32_t counter;
     characteristic.readValue((byte*)&counter, sizeof(counter));
     Serial.print("🔄 Counter Acc: ");
     Serial.println(counter);
-
   } else if (uuid == DEVICE_ID_UUID) {
     byte id;
     characteristic.readValue(&id, 1);
     Serial.print("🆔 Device ID: ");
     Serial.println(id);
-
   } else if (uuid == BATTERY_UUID) {
     byte battery;
     characteristic.readValue(&battery, 1);
     Serial.print("🔋 Battery: ");
     Serial.println(battery == 0 ? "Charging" : battery == 1 ? "Full" : "Unknown");
-
   } else if (uuid == DEVICE_STATUS_UUID) {
     int16_t status;
     characteristic.readValue((byte*)&status, sizeof(status));
@@ -102,7 +89,6 @@ void handleNotification(BLEDevice central, BLECharacteristic characteristic) {
       case 4:  Serial.println("💤 Sleep"); break;
       default: Serial.println("❓ Unknown");
     }
-
   } else {
     Serial.println("❓ Unknown characteristic");
   }
