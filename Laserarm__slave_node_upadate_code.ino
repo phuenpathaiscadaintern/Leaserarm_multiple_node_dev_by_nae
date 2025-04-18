@@ -236,6 +236,9 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  // ✅ กำหนด ID ชั่วคราว (ทำให้ localName ไม่ซ้ำ)
+  persistanceData.id = 2;   // 👈 เปลี่ยนเป็นเลขเฉพาะของแต่ละเครื่อง
+
   InitLoadPersistanceData(&persistanceData);
 
 #if defined(WIO_TERMINAL)  
@@ -271,7 +274,12 @@ void setup() {
     deviceStatus = 4;
   } else {
     // Optional: Set names for BLE visibility
-    BLE.setLocalName("ArLaserTS001");  // ชื่อต้องตรงกับที่ Master ใช้เช็ค
+    char szLocalName[32];
+    sprintf(szLocalName, "ArLaserTS%03d", persistanceData.id);
+    BLE.setLocalName(szLocalName);
+    Serial.print("📛 LocalName set to: ");
+    Serial.println(szLocalName);
+
     BLE.setAdvertisedService(tslaserService);
 
     // Add characteristics to service
